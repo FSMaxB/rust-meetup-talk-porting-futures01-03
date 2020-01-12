@@ -24,7 +24,7 @@
 	</head>
 	<body>
 		<div class="reveal">
-			<div class="slides">
+			<div class="slides" style="-moz-tab-size: 2; tab-size: 2;">
 				<section>
 					<h1>Futures</h1>
 					<h2>And porting from 0.1 to 0.2</h2>
@@ -146,53 +146,47 @@
 				</section>
 
 				<section>
-					<pre><code data-trim data-noescape>
-					use std::future::Future;
-					use std::pin::Pin;
-					use std::ptr::null;
-					use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
+					<section>
+						<pre><code data-trim data-noescape>
+						unsafe fn noop_clone(pointer: *const ()) -&gt; RawWaker {
+								RawWaker::new(pointer, &amp;NOOP_WAKER_VTABLE)
+						}
 
-					unsafe fn noop_clone(pointer: *const ()) -&gt; RawWaker {
-							RawWaker::new(pointer, &amp;NOOP_WAKER_VTABLE)
-					}
+						unsafe fn noop_wake(_: *const ()) {}
+						unsafe fn noop_wake_by_ref(_: *const ()) {}
+						unsafe fn noop_drop(_: *const ()) {}
 
-					unsafe fn noop_wake(_: *const ()) {}
-					unsafe fn noop_wake_by_ref(_: *const ()) {}
-					unsafe fn noop_drop(_: *const ()) {}
+						const NOOP_WAKER_VTABLE: RawWakerVTable =
+							RawWakerVTable::new(
+								noop_clone,
+								noop_wake,
+								noop_wake_by_ref,
+								noop_drop);
 
-					const NOOP_WAKER_VTABLE: RawWakerVTable = RawWakerVTable::new(noop_clone, noop_wake, noop_wake_by_ref, noop_drop);
-
-					unsafe fn new_noop_waker() -&gt; Waker {
+						unsafe fn new_noop_waker() -&gt; Waker {
 							Waker::from_raw(RawWaker::new(null(), &amp;NOOP_WAKER_VTABLE))
-					}
-
-					enum StupidRuntime {}
-
-					impl StupidRuntime {
-							fn run&lt;OutputType&gt;(mut future: impl Future&lt;Output = OutputType&gt;) -&t; OutputType {
-									let waker = unsafe { new_noop_waker() };
-									let mut context = Context::from_waker(&amp;waker);
-									let mut pinned_future = unsafe { Pin::new_unchecked(&amp;mut future) };
-									loop {
-											let poll = pinned_future.as_mut().poll(&amp;mut context);
-											match poll {
-													Poll::Ready(output) =&gt; return output,
-													Poll::Pending =&gt; {}
-											}
-									}
-							}
-					}
-
-					fn main() {
-							let hello_future = futures::future::ready("Hello World!");
-							let future = async move {
-									let hello = hello_future.await;
-									println!("{}", hello);
-							};
-
-							StupidRuntime::run(future);
-					}
-					</code></pre>
+						}
+						</code></pre>
+					</section>
+					<section>
+						<pre><code data-trim data-noescape>
+						enum StupidRuntime {}
+						impl StupidRuntime {
+								fn run&lt;OutputType&gt;(mut future: impl Future&lt;Output = OutputType&gt;) -&t; OutputType {
+										let waker = unsafe { new_noop_waker() };
+										let mut context = Context::from_waker(&amp;waker);
+										let mut pinned_future = unsafe { Pin::new_unchecked(&amp;mut future) };
+										loop {
+												let poll = pinned_future.as_mut().poll(&amp;mut context);
+												match poll {
+														Poll::Ready(output) =&gt; return output,
+														Poll::Pending =&gt; {}
+												}
+										}
+								}
+						}
+						</code></pre>
+					</section>
 				</section>
 
 				<section>
