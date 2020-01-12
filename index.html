@@ -53,6 +53,7 @@
 							<li>Multiple futures → Task</li>
 							<li>~1 heap allocation per task</li>
 						</ul>
+						<li>noop cancelation</li>
 					</ul>
 				</section>
 
@@ -190,6 +191,36 @@
 				</section>
 
 				<section>
+					<h1>Ecosystem</h1>
+				</section>
+
+				<section>
+					<h2>futures</h2>
+					<ul>
+						<li>(previously) <code>Future</code> trait</li>
+						<li><code>Stream</code> and <code>Sink</code> traits</li>
+						<li>combinators</li>
+						<li>channels</li>
+					</ul>
+				</section>
+
+				<section>
+					<h2>tokio</h2>
+					<ul>
+						<li>runtime</li>
+						<li>async IO</li>
+						<li>timers</li>
+						<li>synchronisation primitives</li>
+						<li>…</li>
+					</ul>
+				</section>
+
+				<section>
+					<h2>async-std</h2>
+					Asynchronous reimplementation of the standard library.
+				</section>
+
+				<section>
 					<h2>Example</h2>
 					<p>combinators</p>
 					<pre><code data-trim data-noescape>
@@ -212,24 +243,26 @@
 				</section>
 
 				<section>
-					<h2>More complex example</h2>
-					<p>combinators</p>
-					<pre><code data-trim data-noescape>
-					download(DOWNLOAD_URL)
-						.and_then(|image| {
-							if image.is_correct_format() {
-								Either::Left(ready(image))
-							} else {
-								Either::Right(convert(image))
-							}
-						})
-						.and_then(|converted_image|
-							upload(converted_image, UPLOAD_URL))
-						.map(|()| /* ... */)
-					</code></pre>
-
-					<p class="fragment">
+					<section>
+						<h2>More complex example</h2>
 						<p>combinators</p>
+						<pre><code data-trim data-noescape>
+						download(DOWNLOAD_URL)
+							.and_then(|image| {
+								if image.is_correct_format() {
+									Either::Left(ready(image))
+								} else {
+									Either::Right(convert(image))
+								}
+							})
+							.and_then(|converted_image|
+								upload(converted_image, UPLOAD_URL))
+							.map(|()| /* ... */)
+						</code></pre>
+					</section>
+
+					<section>
+						<p>async/await</p>
 						<pre><code data-trim data-noescape>
 						let image = download(DOWNLOAD_URL).await;
 						let converted_image = if image.is_correct_format() {
@@ -240,7 +273,7 @@
 						upload(converted_image, UPLOAD_URL).await;
 						/* ... */
 						</code></pre>
-					</p>
+					</section>
 				</section>
 
 			</div>
