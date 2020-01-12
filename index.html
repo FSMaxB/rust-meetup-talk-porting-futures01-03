@@ -25,8 +25,230 @@
 	<body>
 		<div class="reveal">
 			<div class="slides">
-				<section>Slide 1</section>
-				<section>Slide 2</section>
+				<section>
+					<h1>Futures</h1>
+					<h2>And porting from 0.1 to 0.2</h2>
+					<i>Max Bruckner</i>
+				</section>
+
+				<section>
+					<h2>Future (aka Promise)</h2>
+					<ul>
+						<li>Value that might not yet be available</li>
+						<ul>
+							<li>Async IO</li>
+							<li>Expensive computations</li>
+							<li>Timers</li>
+							<li>Combinators on these</li>
+						</ul>
+					</ul>
+				</section>
+
+				<section>
+					<h2>Low overhead concurrency</h2>
+					<ul>
+						<li>Concurrency without threads</li>
+						<li>Few heap allocations</li>
+						<ul>
+							<li>Multiple futures → Task</li>
+							<li>~1 heap allocation per task</li>
+						</ul>
+					</ul>
+				</section>
+
+				<section>
+					<h2>Server example</h2>
+					<pre><code data-trim data-noescape>
+					async fn handle_request(
+							request: Request,
+							connection: Connection) {
+						let response = respond(request).await;
+						connection.write(response).await;
+					}
+					</code></pre>
+
+					<pre><code data-trim data-noescape>
+					loop {
+						let (request, connection) = wait_for_request();
+						let future = handle_request(request, connection);
+						runtime.spawn(future);
+					}
+					</code></pre>
+				</section>
+
+				<section>
+					<h2>The Future trait</h2>
+					<pre><code data-trim data-noescape>
+					pub enum Poll<T> {
+						Ready(T),
+						Pending,
+					}
+					</code></pre>
+
+					<pre><code data-trim data-noescape>
+					pub trait Future {
+						type Output;
+
+						fn poll(self: Pin&lt;&amp;mut Self&gt;, cx: &amp;mut Context&lt;'_&gt;)
+							-&gt; Poll&lt;Self::Output&gt;;
+					}
+					</code></pre>
+				</section>
+
+				<section>
+					<h2>Pin</h2>
+					<ul>
+						<li>Immovable (pin in memory)</li>
+						<li>But: <code>Unpin</code> marker trait</li>
+					</ul>
+				</section>
+
+				<section>
+					<h2>Context</h2>
+					<pre><code data-trim data-noescape>
+					pub fn from_waker(waker: &amp;'a Waker) -&gt; Context&lt;'a&gt;
+					pub fn waker(&amp;self) -&gt; &amp;'a Waker
+					</code></pre>
+
+					<div class="fragment">
+						<p>Waker</p>
+						<pre><code data-trim data-noescape>
+						pub fn wake(self)
+						/* ... */
+						pub unsafe fn from_raw(waker: RawWaker) -&gt; Waker
+						</code></pre>
+					</div>
+				</section>
+
+				<section>
+					<h2>RawWaker</h2>
+					<pre><code data-trim data-noescape>
+				pub const fn new(
+					data: *const (),
+					vtable: &amp;'static RawWakerVTable) -&gt; RawWaker
+					</code></pre>
+
+					<div class="fragment">
+						<code>RawWakerVTable</code>
+						<pre><code data-trim data-noescape>
+						pub const fn new(
+							clone: unsafe fn(*const ()) -&gt; RawWaker,
+							wake: unsafe fn(*const ()),
+							wake_by_ref: unsafe fn(*const ()),
+							drop: unsafe fn(*const ())
+						) -&gt; RawWakerVTable
+						</code></pre>
+					</div>
+				</section>
+
+				<section>
+					<h1>Stupid runtime</h2>
+				</section>
+
+				<section>
+					<pre><code data-trim data-noescape>
+					use std::future::Future;
+					use std::pin::Pin;
+					use std::ptr::null;
+					use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
+
+					unsafe fn noop_clone(pointer: *const ()) -&gt; RawWaker {
+							RawWaker::new(pointer, &amp;NOOP_WAKER_VTABLE)
+					}
+
+					unsafe fn noop_wake(_: *const ()) {}
+					unsafe fn noop_wake_by_ref(_: *const ()) {}
+					unsafe fn noop_drop(_: *const ()) {}
+
+					const NOOP_WAKER_VTABLE: RawWakerVTable = RawWakerVTable::new(noop_clone, noop_wake, noop_wake_by_ref, noop_drop);
+
+					unsafe fn new_noop_waker() -&gt; Waker {
+							Waker::from_raw(RawWaker::new(null(), &amp;NOOP_WAKER_VTABLE))
+					}
+
+					enum StupidRuntime {}
+
+					impl StupidRuntime {
+							fn run&lt;OutputType&gt;(mut future: impl Future&lt;Output = OutputType&gt;) -&t; OutputType {
+									let waker = unsafe { new_noop_waker() };
+									let mut context = Context::from_waker(&amp;waker);
+									let mut pinned_future = unsafe { Pin::new_unchecked(&amp;mut future) };
+									loop {
+											let poll = pinned_future.as_mut().poll(&amp;mut context);
+											match poll {
+													Poll::Ready(output) =&gt; return output,
+													Poll::Pending =&gt; {}
+											}
+									}
+							}
+					}
+
+					fn main() {
+							let hello_future = futures::future::ready("Hello World!");
+							let future = async move {
+									let hello = hello_future.await;
+									println!("{}", hello);
+							};
+
+							StupidRuntime::run(future);
+					}
+					</code></pre>
+				</section>
+
+				<section>
+					<h2>Example</h2>
+					<p>combinators</p>
+					<pre><code data-trim data-noescape>
+					download(DOWNLOAD_URL)
+						.and_then(convert)
+						.and_then(|converted_image|
+							upload(converted_image, UPLOAD_URL))
+						.then(|()| /* ... */)
+					</code></pre>
+
+					<div class="fragment">
+						<p>async/await</p>
+						<pre><code data-trim data-noescape>
+						let image = download(DOWNLOAD_URL).await;
+						let converted_image = convert(image).await;
+						upload(converted_image, UPLOAD_URL).wait;
+						/* ... */
+						</code></pre>
+					</div>
+				</section>
+
+				<section>
+					<h2>More complex example</h2>
+					<p>combinators</p>
+					<pre><code data-trim data-noescape>
+					download(DOWNLOAD_URL)
+						.and_then(|image| {
+							if image.is_correct_format() {
+								Either::Left(ready(image))
+							} else {
+								Either::Right(convert(image))
+							}
+						})
+						.and_then(|converted_image|
+							upload(converted_image, UPLOAD_URL))
+						.map(|()| /* ... */)
+					</code></pre>
+
+					<p class="fragment">
+						<p>combinators</p>
+						<pre><code data-trim data-noescape>
+						let image = download(DOWNLOAD_URL).await;
+						let converted_image = if image.is_correct_format() {
+							image
+						} else {
+							convert(image).await
+						};
+						upload(converted_image, UPLOAD_URL).await;
+						/* ... */
+						</code></pre>
+					</p>
+				</section>
+
 			</div>
 		</div>
 
