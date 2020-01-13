@@ -221,7 +221,11 @@
 				</section>
 
 				<section>
-					<h2>Example</h2>
+					<h1>Examples</h1>
+				</section>
+
+				<section>
+					<h2>Simple</h2>
 					<p>combinators</p>
 					<pre><code data-trim data-noescape>
 					download(DOWNLOAD_URL)
@@ -244,7 +248,7 @@
 
 				<section>
 					<section>
-						<h2>More complex example</h2>
+						<h2>More complex</h2>
 						<p>combinators</p>
 						<pre><code data-trim data-noescape>
 						download(DOWNLOAD_URL)
@@ -274,6 +278,95 @@
 						/* ... */
 						</code></pre>
 					</section>
+				</section>
+
+				<section>
+					<h1>futures 0.1 → 0.2</h1>
+				</section>
+
+				<section>
+					<h2>cargo</h2>
+					<p>multiple versions</p>
+					<pre><code data-trim data-noescape>
+					tokio = "0.1"
+					tokio02 = {
+						package = "tokio",
+						version = "0.2",
+						features = ["full"]
+					}
+					futures = "0.1"
+					futures03 = {
+						package = "futures",
+						version = "0.3",
+						features = ["compat"]
+					}
+					</code></pre>
+				</section>
+
+				<section>
+					<ul>
+						<li>cargo doc filename collision</li>
+						<li>preludes don't work</li>
+						<li>identical trait names</li>
+						<ul>
+							<li><code>use some::Trait as Trait01</code></li>
+						</ul>
+						<li>no renamed paths in error messages (<code>future03</code>)</li>
+					</ul>
+				</section>
+
+				<section>
+					<h2>tokio-compat</h2>
+					<ul>
+						<li>runs old and new futures</li>
+						<li>mandatory if external crate uses tokio 0.1</li>
+						<li>sometimes still doesn't work</li>
+						<ul>
+							<li>→ use old runtime on separate thread</li>
+							<li>connect using channels</li>
+						</ul>
+					</ul>
+				</section>
+
+				<section>
+					<h2>output type</h2>
+					<p>old</p>
+					<pre><code data-trim data-noescape>
+					Future&lt;Item = OkType, Error = ErrType&gt;
+					</code></pre>
+
+					<p>new</p>
+					<pre><code data-trim data-noescape>
+					Future&lt;Output = OutputType&gt;
+					type TryFuture = Future&lt;Output = Result&lt;OkType, ErrType&gt;&gt;;
+					</code></pre>
+
+					<p>Benefit: No weird tricks for non-failable futures anymore</p>
+				</section>
+
+				<section>
+					<h2>Combinators</h2>
+					<p>Some examples of differences</p>
+					<table>
+						<tr>
+							<td><b>OLD</b></td><td><b>NEW</b></td>
+						</tr>
+						<tr>
+							<td>❌</td><td><code>map</code></td>
+						</tr>
+						<tr>
+							<td><code>map</code></td><td><code>map_ok</code></td>
+						</tr>
+						<tr>
+							<td><code>inspect</code></td><td><code>inspect_ok</code></td>
+						</tr>
+						<tr>
+							<td><code>flatten_stream</code></td><td><code>try_flatten_stream</code></td>
+						</tr>
+						<tr>
+							<td><code>❌</code></td><td><code>flatten_stream</code></td>
+						</tr>
+					</table>
 				</section>
 
 			</div>
