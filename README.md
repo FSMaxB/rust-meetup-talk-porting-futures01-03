@@ -1,4 +1,4 @@
-# Talk: Rust futures and porting vrom 0.1 to 0.3
+# Talk: Rust futures and porting from 0.1 to 0.3
 
 ## Setup
 ```
