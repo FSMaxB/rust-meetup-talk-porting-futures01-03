@@ -27,7 +27,7 @@
 			<div class="slides" style="-moz-tab-size: 2; tab-size: 2;">
 				<section>
 					<h1>Futures</h1>
-					<h2>And porting from 0.1 to 0.2</h2>
+					<h2>And porting from 0.1 to 0.3</h2>
 					<i>Max Bruckner</i>
 				</section>
 
@@ -240,7 +240,7 @@
 						<pre><code data-trim data-noescape>
 						let image = download(DOWNLOAD_URL).await;
 						let converted_image = convert(image).await;
-						upload(converted_image, UPLOAD_URL).wait;
+						upload(converted_image, UPLOAD_URL).await;
 						/* ... */
 						</code></pre>
 					</div>
@@ -281,7 +281,7 @@
 				</section>
 
 				<section>
-					<h1>futures 0.1 → 0.2</h1>
+					<h1>futures 0.1 → 0.3</h1>
 				</section>
 
 				<section>
